@@ -81,3 +81,68 @@ body { background: var(--bg-primary); color: var(--text-primary); min-height: 10
 @layer utilities {
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
 }
+
+/* ── Extra polish added in v1.1 ── */
+
+/* Richer cards */
+.card {
+  border-radius: 1.25rem !important;
+}
+
+/* Better input focus ring */
+.input-base:focus {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.18) !important;
+  background: var(--bg-card) !important;
+}
+
+/* Numpad button press feedback */
+button:active { outline: none; }
+
+/* Prevent text selection on buttons */
+button { -webkit-user-select: none; user-select: none; }
+
+/* Smooth scroll everywhere */
+* { scroll-behavior: smooth; }
+
+/* Hide date input calendar icon on some browsers */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+
+/* Better scrollbar for horizontal scroll (payment methods) */
+.overflow-x-auto::-webkit-scrollbar { display: none; }
+.overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Bottom sheet scrollbar hide */
+.bottom-sheet::-webkit-scrollbar { display: none; }
+
+/* Stronger active nav indicator */
+.nav-active-bg {
+  background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(22,163,74,0.1));
+}
+
+/* Gradient border trick for selected items */
+.ring-green { box-shadow: 0 0 0 2px #22c55e; }
+
+/* Prevent layout shifts on mobile keyboard open */
+@media (max-height: 600px) {
+  .bottom-sheet { max-height: 100dvh !important; }
+}
+
+/* Better tap target sizes on mobile */
+@media (pointer: coarse) {
+  button { min-height: 44px; }
+  input, textarea { min-height: 44px; font-size: 16px !important; }
+}
+
+/* Prevent iOS zoom on input focus */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Page header gradient */
+.page-header-gradient {
+  background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
+}

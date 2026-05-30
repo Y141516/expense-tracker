@@ -159,7 +159,10 @@ export default function BudgetsPage() {
               className={`card p-4 ${cat.status?.status === "exceeded" ? "border-red-500/30" : cat.status?.status === "warning" ? "border-amber-500/30" : ""}`}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: `${cat.color}20` }}>
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                  style={{ background: `${cat.color}22`, minWidth: 44, minHeight: 44 }}
+                >
                   {cat.icon}
                 </div>
                 <div className="flex-1 min-w-0">

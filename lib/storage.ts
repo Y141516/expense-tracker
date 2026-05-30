@@ -182,11 +182,13 @@ export function getWeeklyTotals(): { week: string; amount: number }[] {
 
 export function getMonthlyTrends(months: number = 6): { month: string; amount: number }[] {
   const result = [];
+  const now = new Date();
+  // Pin to 1st of current month to avoid day-overflow bugs (e.g. May 31 - 3 months ≠ Feb)
+  const base = new Date(now.getFullYear(), now.getMonth(), 1);
   for (let i = months - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setMonth(date.getMonth() - i);
+    const date = new Date(base.getFullYear(), base.getMonth() - i, 1);
     const monthKey = format(date, "yyyy-MM");
-    const monthLabel = format(date, "MMM");
+    const monthLabel = format(date, "MMM yy");
     result.push({ month: monthLabel, amount: getMonthlyTotal(monthKey) });
   }
   return result;

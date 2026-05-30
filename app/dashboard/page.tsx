@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useApp } from "@/store/app-context";
 import { getProfile, getMonthlyTrends, getCategoryTotals, getExpensesByMonth, generateInsights } from "@/lib/storage";
 import { formatCurrency, getGreeting, getCurrentMonth, getMonthLabel, getPreviousMonth, getBudgetStatus } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Bell, ChevronRight, Lightbulb } from "lucide-react";
+import { TrendingUp, TrendingDown, Bell, ChevronRight } from "lucide-react";
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { DEFAULT_CATEGORIES } from "@/types";
 import Link from "next/link";
@@ -93,64 +93,75 @@ export default function DashboardPage() {
       <motion.div
         variants={itemVariants}
         className="rounded-3xl p-6 relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #0f2d1f, #0a1f2e, #1a1035)" }}
+        style={{
+          background: "linear-gradient(145deg, #0d2518 0%, #0a1a2e 50%, #150d2a 100%)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
+        }}
       >
-        {/* Background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 rounded-full opacity-20 blur-3xl"
-          style={{ background: "radial-gradient(#22c55e, transparent)" }} />
+        {/* Glow orbs */}
+        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full opacity-15 blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(circle, #22c55e, transparent)" }} />
+        <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full opacity-10 blur-3xl pointer-events-none"
+          style={{ background: "radial-gradient(circle, #06b6d4, transparent)" }} />
 
         <div className="relative z-10">
-          <p className="text-xs font-semibold text-green-400/80 uppercase tracking-widest mb-1">
-            {getMonthLabel(currentMonth)} Spending
-          </p>
-          <div className="flex items-end gap-3 mb-1">
-            <h2 className="text-4xl font-bold text-white font-mono">
-              {formatCurrency(totalSpent, currency)}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2 mb-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "rgba(34,197,94,0.8)" }}>
+              {getMonthLabel(currentMonth)} Spending
+            </p>
             {prevTotal > 0 && (
-              <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${change > 0 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}>
-                {change > 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {Math.abs(change).toFixed(1)}% vs last month
+              <span className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${change > 0 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}>
+                {change > 0 ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                {Math.abs(change).toFixed(1)}%
               </span>
             )}
           </div>
 
+          <h2 className="text-5xl font-black text-white mb-4" style={{ fontFamily: "var(--font-jetbrains-mono)", letterSpacing: "-2px" }}>
+            {formatCurrency(totalSpent, currency)}
+          </h2>
+
           {/* Budget progress */}
           {totalBudget > 0 && (
-            <div>
-              <div className="flex justify-between text-xs text-white/60 mb-1.5">
+            <div className="mb-5">
+              <div className="flex justify-between text-xs mb-2" style={{ color: "rgba(255,255,255,0.5)" }}>
                 <span>Budget used</span>
-                <span>{formatCurrency(totalSpent, currency)} / {formatCurrency(totalBudget, currency)}</span>
+                <span style={{ color: "rgba(255,255,255,0.7)" }}>
+                  {formatCurrency(totalSpent, currency)} / {formatCurrency(totalBudget, currency)}
+                </span>
               </div>
-              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(budgetUsed, 100)}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  transition={{ duration: 1, ease: "easeOut" }}
                   className="h-full rounded-full"
                   style={{
-                    background: budgetUsed >= 100 ? "#ef4444" : budgetUsed >= 80 ? "#f59e0b" : "#22c55e"
+                    background: budgetUsed >= 100
+                      ? "linear-gradient(90deg, #ef4444, #dc2626)"
+                      : budgetUsed >= 80
+                      ? "linear-gradient(90deg, #f59e0b, #d97706)"
+                      : "linear-gradient(90deg, #22c55e, #16a34a)",
+                    boxShadow: budgetUsed >= 100 ? "0 0 10px rgba(239,68,68,0.5)" : "0 0 10px rgba(34,197,94,0.4)",
                   }}
                 />
               </div>
-              <p className="text-xs text-white/50 mt-1">
+              <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.45)" }}>
                 {budgetUsed >= 100 ? "⚠️ Over budget!" : `${Math.round(100 - budgetUsed)}% budget remaining`}
               </p>
             </div>
           )}
 
           {/* Quick stats */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-3 gap-2">
             {[
               { label: "Today", value: formatCurrency(expenses.filter(e => e.date === format(new Date(), "yyyy-MM-dd")).reduce((s, e) => s + e.amount, 0), currency) },
               { label: "This Week", value: formatCurrency(last7Days.reduce((s, d) => s + d.amount, 0), currency) },
               { label: "Transactions", value: monthExpenses.length.toString() },
             ].map(({ label, value }) => (
-              <div key={label} className="bg-white/5 rounded-xl p-2.5 text-center">
-                <p className="text-lg font-bold text-white">{value}</p>
-                <p className="text-[10px] text-white/50">{label}</p>
+              <div key={label} className="rounded-2xl px-3 py-3 text-center" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-sm font-bold text-white leading-tight">{value}</p>
+                <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
               </div>
             ))}
           </div>
@@ -161,19 +172,22 @@ export default function DashboardPage() {
       {insights.length > 0 && (
         <motion.div variants={itemVariants}>
           <div className="flex items-center gap-2 mb-3">
-            <Lightbulb size={16} className="text-amber-400" />
+            <span className="text-base">💡</span>
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Smart Insights</h3>
           </div>
           <div className="space-y-2">
-            {insights.slice(0, 2).map((insight) => (
-              <div key={insight.id} className={`card p-3.5 flex items-start gap-3 ${"type" in insight && (insight as {type: string}).type === "warning" ? "border-amber-500/30" : "border-green-500/20"}`}>
+            {insights.slice(0, 2).map((insight) => {
+              const isWarning = (insight as { type: string }).type === "warning";
+              return (
+              <div key={insight.id} className={`card p-3.5 flex items-start gap-3 ${isWarning ? "border-amber-500/30" : "border-green-500/20"}`}>
                 <span className="text-xl">{insight.icon}</span>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">{insight.title}</p>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{insight.message}</p>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </motion.div>
       )}

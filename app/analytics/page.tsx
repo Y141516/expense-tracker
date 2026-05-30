@@ -109,16 +109,30 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <div className="px-4 mb-4">
-        <div className="flex gap-1 bg-[var(--bg-elevated)] p-1 rounded-2xl">
+        <div
+          className="flex gap-1 p-1 rounded-2xl"
+          style={{ background: "var(--bg-elevated)" }}
+        >
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                tab === t.id ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)]"
-              }`}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all relative"
+              style={{
+                color: tab === t.id ? "var(--text-primary)" : "var(--text-muted)",
+                background: tab === t.id ? "var(--bg-card)" : "transparent",
+                boxShadow: tab === t.id ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
+              }}
             >
-              {t.label}
+              {tab === t.id && (
+                <motion.div
+                  layoutId="tab-active"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ background: "var(--bg-card)" }}
+                  transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                />
+              )}
+              <span className="relative z-10">{t.label}</span>
             </button>
           ))}
         </div>

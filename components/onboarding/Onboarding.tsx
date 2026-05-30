@@ -281,8 +281,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           >
             <div className="mb-6">
               <p className="text-xs font-semibold text-green-500 uppercase tracking-widest mb-2">Step 3 of 4</p>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Set Monthly Budgets</h2>
-              <p className="text-[var(--text-secondary)] text-sm">Set spending limits per category. You can always change these later.</p>
+              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Monthly Budgets</h2>
+              <p className="text-[var(--text-secondary)] text-sm">Each amount = <strong>per month only</strong> — resets automatically. E.g. enter ₹3,000 for Food to allow ₹3,000/month on food.</p>
             </div>
 
             {/* Quick preset */}
@@ -319,10 +319,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                       type="number"
                       value={budgets[cat.id] || ""}
                       onChange={(e) => setBudgetAmounts(prev => ({ ...prev, [cat.id]: e.target.value }))}
-                      placeholder="No limit"
-                      className="w-24 text-right bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded-lg px-2 py-1.5 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-green-500"
+                      placeholder="0"
+                      className="w-20 text-right bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded-lg px-2 py-1.5 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-green-500"
                       inputMode="numeric"
                     />
+                    <span className="text-[10px] font-bold text-green-500">/mo</span>
                   </div>
                 </div>
               ))}

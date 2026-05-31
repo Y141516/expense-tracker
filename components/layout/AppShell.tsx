@@ -1,19 +1,29 @@
 "use client";
-import { BottomNav } from "./BottomNav";
-import { AddExpenseFAB } from "@/components/expenses/AddExpenseFAB";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { useBudgetNotifications } from "@/hooks/useBudgetNotifications";
+import { AddExpenseFAB } from "@/components/expenses/AddExpenseFAB";
+import { BottomNav } from "./BottomNav";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   useServiceWorker();
   useBudgetNotifications();
 
   return (
-    <div className="min-h-dvh flex flex-col">
-      <main className="flex-1 pb-20">
+    // Outer wrapper — no transforms, no overflow hidden, just position relative
+    <div style={{ position: "relative", minHeight: "100dvh" }}>
+      {/* Scrollable content area — padded at bottom for nav */}
+      <div
+        style={{
+          paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px) + 8px)",
+        }}
+      >
         {children}
-      </main>
+      </div>
+
+      {/* FAB — fixed, rendered outside flex so fixed positioning works correctly */}
       <AddExpenseFAB />
+
+      {/* Bottom nav — fixed, rendered last so it's on top */}
       <BottomNav />
     </div>
   );

@@ -1,144 +1,186 @@
 "use client";
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import { useApp } from "@/store/app-context";
 import { getProfile } from "@/lib/storage";
 import { formatCurrency, formatDate, groupExpensesByDate } from "@/lib/utils";
-import { Search, Filter, X, ChevronLeft, ChevronRight as ChevRight } from "lucide-react";
 import { ExpenseItem } from "@/components/expenses/ExpenseItem";
-import { DEFAULT_CATEGORIES } from "@/types";
 import { format, subMonths, addMonths } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ExpensesPage() {
   const { expenses, categories } = useApp();
   const profile = getProfile();
   const currency = profile?.currency || "INR";
+
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterCat, setFilterCat] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState(format(new Date(), "yyyy-MM"));
   const [showFilters, setShowFilters] = useState(false);
 
-  const monthExpenses = useMemo(() => {
-    return expenses.filter((e) => {
-      const matchMonth = e.date.startsWith(viewMonth);
-      const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase());
-      const matchCategory = !filterCategory || e.category_id === filterCategory;
-      return matchMonth && matchSearch && matchCategory;
-    });
-  }, [expenses, viewMonth, search, filterCategory]);
+  const monthExpenses = useMemo(() =>
+    expenses.filter(e => {
+      const mok = e.date.startsWith(viewMonth);
+      const sok = !search || e.description.toLowerCase().includes(search.toLowerCase());
+      const cok = !filterCat || e.category_id === filterCat;
+      return mok && sok && cok;
+    }),
+    [expenses, viewMonth, search, filterCat]
+  );
 
   const grouped = useMemo(() => groupExpensesByDate(monthExpenses), [monthExpenses]);
-  const totalFiltered = monthExpenses.reduce((s, e) => s + e.amount, 0);
+  const total = monthExpenses.reduce((s, e) => s + e.amount, 0);
+
+  const canNext = viewMonth < format(new Date(), "yyyy-MM");
+  const monthLabel = format(new Date(viewMonth + "-01"), "MMMM yyyy");
 
   const prevMonth = () => setViewMonth(format(subMonths(new Date(viewMonth + "-01"), 1), "yyyy-MM"));
   const nextMonth = () => {
-    const next = format(addMonths(new Date(viewMonth + "-01"), 1), "yyyy-MM");
-    if (next <= format(new Date(), "yyyy-MM")) setViewMonth(next);
+    if (!canNext) return;
+    setViewMonth(format(addMonths(new Date(viewMonth + "-01"), 1), "yyyy-MM"));
   };
-  const canGoNext = viewMonth < format(new Date(), "yyyy-MM");
-
-  const monthLabel = format(new Date(viewMonth + "-01"), "MMMM yyyy");
 
   return (
-    <div className="page-enter">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-[var(--bg-primary)] px-4 pt-6 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Expenses</h1>
+    <div className="page-content">
+
+      {/* ── STICKY HEADER ── */}
+      <div className="page-header">
+        {/* Title row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <h1 className="t-h2" style={{ color: "var(--text-primary)" }}>Expenses</h1>
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${filterCategory || search ? "bg-green-500/15 text-green-500" : "bg-[var(--bg-card)] border border-[var(--bg-border)] text-[var(--text-muted)]"}`}
+            onClick={() => setShowFilters(v => !v)}
+            className="btn btn-sm btn-secondary"
+            style={{
+              borderColor: (filterCat || search) ? "var(--accent)" : undefined,
+              color: (filterCat || search) ? "var(--accent)" : undefined,
+              background: (filterCat || search) ? "var(--accent-dim)" : undefined,
+            }}
           >
-            <Filter size={14} />
-            Filter
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            Filter {(filterCat || search) ? "•" : ""}
           </button>
         </div>
 
-        {/* Month navigator */}
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={prevMonth} className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--bg-card)] border border-[var(--bg-border)]">
-            <ChevronLeft size={16} className="text-[var(--text-secondary)]" />
+        {/* Month picker */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <button onClick={prevMonth} className="btn btn-ghost btn-sm" style={{ width: 36, padding: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <h2 className="text-base font-bold text-[var(--text-primary)]">{monthLabel}</h2>
-          <button onClick={nextMonth} disabled={!canGoNext} className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--bg-card)] border border-[var(--bg-border)] disabled:opacity-40">
-            <ChevRight size={16} className="text-[var(--text-secondary)]" />
+          <span className="t-label" style={{ color: "var(--text-primary)", flex: 1, textAlign: "center" }}>{monthLabel}</span>
+          <button onClick={nextMonth} disabled={!canNext} className="btn btn-ghost btn-sm" style={{ width: 36, padding: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+        <div style={{ position: "relative", marginTop: 10 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
           <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search expenses..."
-            className="input-base pl-9 pr-9"
+            type="text" value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search expenses…"
+            className="input-base"
+            style={{ paddingLeft: 38, paddingRight: search ? 38 : 14 }}
           />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X size={14} className="text-[var(--text-muted)]" />
+            <button onClick={() => setSearch("")}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           )}
         </div>
 
-        {/* Category filter */}
-        {showFilters && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            className="mt-3 flex gap-2 overflow-x-auto pb-1"
-          >
-            <button
-              onClick={() => setFilterCategory(null)}
-              className={`category-chip shrink-0 ${!filterCategory ? "bg-green-500/15 text-green-500" : "bg-[var(--bg-card)] border border-[var(--bg-border)] text-[var(--text-muted)]"}`}
+        {/* Category filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: "hidden", marginTop: 10 }}
             >
-              All
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setFilterCategory(filterCategory === cat.id ? null : cat.id)}
-                className={`category-chip shrink-0 ${filterCategory === cat.id ? "ring-2 ring-green-500" : "bg-[var(--bg-card)] border border-[var(--bg-border)] text-[var(--text-secondary)]"}`}
-              >
-                {cat.icon} {cat.name}
-              </button>
-            ))}
-          </motion.div>
-        )}
+              <div className="no-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                {[null, ...categories].map(cat => {
+                  const active = filterCat === (cat?.id ?? null);
+                  return (
+                    <button key={cat?.id ?? "all"}
+                      onClick={() => setFilterCat(cat?.id ?? null)}
+                      className="btn btn-sm"
+                      style={{
+                        flexShrink: 0,
+                        borderRadius: 20,
+                        background: active ? "var(--accent-dim)" : "var(--bg-elevated)",
+                        color: active ? "var(--accent)" : "var(--text-secondary)",
+                        border: `1.5px solid ${active ? "var(--accent)" : "transparent"}`,
+                        height: 32,
+                        fontWeight: active ? 700 : 500,
+                      }}
+                    >
+                      {cat ? `${cat.icon} ${cat.name.split(" ")[0]}` : "All"}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Summary bar */}
+      {/* ── SUMMARY STRIP ── */}
       {monthExpenses.length > 0 && (
-        <div className="px-4 pb-3 flex items-center justify-between">
-          <span className="text-sm text-[var(--text-muted)]">{monthExpenses.length} expense{monthExpenses.length !== 1 ? "s" : ""}</span>
-          <span className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(totalFiltered, currency)}</span>
+        <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span className="t-caption" style={{ color: "var(--text-muted)" }}>
+            {monthExpenses.length} transaction{monthExpenses.length !== 1 ? "s" : ""}
+          </span>
+          <span className="t-label" style={{ color: "var(--text-primary)" }}>
+            {formatCurrency(total, currency)}
+          </span>
         </div>
       )}
 
-      {/* Expense list */}
-      <div className="px-4 pb-24">
+      {/* ── EXPENSE GROUPS ── */}
+      <div style={{ padding: "0 16px 8px" }}>
         {grouped.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="text-4xl mb-3">🔍</div>
-            <h3 className="font-bold text-[var(--text-primary)] mb-1">
-              {search || filterCategory ? "No matching expenses" : "No expenses this month"}
-            </h3>
-            <p className="text-sm text-[var(--text-muted)]">
-              {search || filterCategory ? "Try different filters" : "Tap + to add your first expense"}
+          <div style={{ paddingTop: 64, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 24, background: "var(--bg-elevated)",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, marginBottom: 16,
+            }}>🔍</div>
+            <p className="t-h4" style={{ color: "var(--text-primary)", marginBottom: 6 }}>
+              {search || filterCat ? "No results" : "No expenses"}
+            </p>
+            <p className="t-body-sm" style={{ color: "var(--text-muted)" }}>
+              {search || filterCat ? "Try different filters" : "Tap + to add your first expense"}
             </p>
           </div>
         ) : (
-          <div className="space-y-5">
-            {grouped.map(({ date, items, total }) => (
+          <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {grouped.map(({ date, items, total: dayTotal }) => (
               <div key={date}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wide">{formatDate(date)}</span>
-                  <span className="text-xs font-semibold text-[var(--text-secondary)]">{formatCurrency(total, currency)}</span>
+                {/* Date header */}
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  marginBottom: 8,
+                }}>
+                  <span className="t-overline" style={{ color: "var(--text-muted)" }}>
+                    {formatDate(date)}
+                  </span>
+                  <span className="t-caption" style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
+                    {formatCurrency(dayTotal, currency)}
+                  </span>
                 </div>
-                <div className="card divide-y divide-[var(--bg-border)] overflow-hidden">
-                  {items.map((expense) => (
-                    <ExpenseItem key={expense.id} expense={expense} />
+                {/* Items card */}
+                <div className="card" style={{ overflow: "hidden", padding: 0 }}>
+                  {items.map((expense, i) => (
+                    <div key={expense.id}
+                      style={{ borderBottom: i < items.length - 1 ? "1px solid var(--bg-border)" : "none" }}>
+                      <ExpenseItem expense={expense} />
+                    </div>
                   ))}
                 </div>
               </div>

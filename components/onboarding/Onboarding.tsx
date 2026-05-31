@@ -4,32 +4,47 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "@/store/app-context";
 import { CURRENCIES, DEFAULT_CATEGORIES } from "@/types";
 import { formatCurrency } from "@/lib/utils";
-import { Check, ChevronRight, Wallet, Target, Bell, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 
-interface OnboardingProps {
-  onComplete: () => void;
-}
+interface Props { onComplete: () => void; }
 
 const STEPS = ["welcome", "currency", "income", "budgets", "notifications", "done"] as const;
-type OnboardingStep = typeof STEPS[number];
+type Step = typeof STEPS[number];
 
-export function Onboarding({ onComplete }: OnboardingProps) {
+const SYM: Record<string, string> = {
+  INR: "₹", USD: "$", EUR: "€", GBP: "£", JPY: "¥", AUD: "A$", CAD: "C$", SGD: "S$", AED: "د.إ",
+};
+
+const PRESETS: Record<string, Record<string, number>> = {
+  INR: { food: 4000, grocery: 3000, travel: 2500, shopping: 2500, bills: 2000, entertainment: 1500, health: 1000, education: 1000 },
+  USD: { food: 300, grocery: 250, travel: 200, shopping: 150, bills: 120, entertainment: 100, health: 80, education: 60 },
+};
+
+export function Onboarding({ onComplete }: Props) {
   const { setProfile, setBudget } = useApp();
-  const [step, setStep] = useState<OnboardingStep>("welcome");
+  const [step, setStep] = useState<Step>("welcome");
+  const [dir, setDir] = useState(1);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [income, setIncome] = useState("");
-  const [budgets, setBudgetAmounts] = useState<Record<string, string>>({});
+  const [budgets, setBudgets] = useState<Record<string, string>>({});
   const [notifBudget, setNotifBudget] = useState(true);
   const [notifWeekly, setNotifWeekly] = useState(true);
 
-  const currencySymbols: Record<string, string> = {
-    INR: "₹", USD: "$", EUR: "€", GBP: "£", JPY: "¥", AUD: "A$", CAD: "C$", SGD: "S$", AED: "د.إ"
-  };
-  const symbol = currencySymbols[currency] || "₹";
+  const stepIdx = STEPS.indexOf(step);
+  const pct = (stepIdx / (STEPS.length - 1)) * 100;
+  const sym = SYM[currency] || "₹";
 
-  const stepIndex = STEPS.indexOf(step);
-  const progress = (stepIndex / (STEPS.length - 1)) * 100;
+  const go = (s: Step) => { setDir(STEPS.indexOf(s) > stepIdx ? 1 : -1); setStep(s); };
+
+  const applyPreset = (mult: number) => {
+    const base = PRESETS[currency] || PRESETS.INR;
+    const result: Record<string, string> = {};
+    DEFAULT_CATEGORIES.filter(c => c.id !== "others").forEach(c => {
+      result[c.id] = Math.round((base[c.id] || 500) * mult).toString();
+    });
+    setBudgets(result);
+  };
 
   const handleComplete = () => {
     setProfile({
@@ -41,407 +56,278 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       notification_weekly_summary: notifWeekly,
       notification_monthly_report: true,
     });
-
-    // Save budgets
     const month = new Date().toISOString().slice(0, 7);
-    Object.entries(budgets).forEach(([catId, amount]) => {
-      if (amount && parseFloat(amount) > 0) {
-        setBudget(catId, parseFloat(amount), month);
-      }
+    Object.entries(budgets).forEach(([id, amt]) => {
+      if (amt && parseFloat(amt) > 0) setBudget(id, parseFloat(amt), month);
     });
-
     onComplete();
   };
 
-  const quickBudgets = [
-    { label: "Tight", multiplier: 0.5 },
-    { label: "Moderate", multiplier: 0.7 },
-    { label: "Comfortable", multiplier: 1 },
-  ];
-
-  const suggestedBudgets: Record<string, Record<string, number>> = {
-    INR: { food: 5000, grocery: 4000, travel: 3000, shopping: 3000, bills: 2500, entertainment: 2000, health: 1500, education: 1000 },
-    USD: { food: 400, grocery: 300, travel: 200, shopping: 200, bills: 150, entertainment: 150, health: 100, education: 50 },
+  const variants = {
+    enter: (d: number) => ({ opacity: 0, x: d * 40 }),
+    center: { opacity: 1, x: 0 },
+    exit: (d: number) => ({ opacity: 0, x: d * -40 }),
   };
-  const suggested = suggestedBudgets[currency] || suggestedBudgets["INR"];
 
-  const applyQuickBudget = (multiplier: number) => {
-    const newBudgets: Record<string, string> = {};
-    DEFAULT_CATEGORIES.filter(c => c.id !== "others").forEach(cat => {
-      const base = suggested[cat.id] || 1000;
-      newBudgets[cat.id] = Math.round(base * multiplier).toString();
-    });
-    setBudgetAmounts(newBudgets);
-  };
+  const Btn = ({ onClick, children, secondary = false, disabled = false }: {
+    onClick: () => void; children: React.ReactNode; secondary?: boolean; disabled?: boolean;
+  }) => (
+    <motion.button whileTap={{ scale: 0.96 }} onClick={onClick} disabled={disabled}
+      style={{
+        height: 52, borderRadius: 16, fontWeight: 800, fontSize: 15, cursor: disabled ? "not-allowed" : "pointer",
+        border: secondary ? "1.5px solid var(--bg-border)" : "none",
+        background: secondary ? "var(--bg-elevated)" : "linear-gradient(135deg, #22c55e, #16a34a)",
+        color: secondary ? "var(--text-secondary)" : "#fff",
+        opacity: disabled ? 0.4 : 1,
+        padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+      }}
+    >{children}</motion.button>
+  );
 
   return (
-    <div className="min-h-dvh flex flex-col bg-[var(--bg-primary)]">
-      {/* Progress bar */}
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: "var(--bg-base)" }}>
+      {/* Progress */}
       {step !== "welcome" && step !== "done" && (
-        <div className="fixed top-0 left-0 right-0 z-50">
-          <div className="h-1 bg-[var(--bg-elevated)]">
-            <motion.div
-              className="h-full bg-green-500 rounded-r-full"
-              style={{ width: `${progress}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, height: 3, background: "var(--bg-elevated)" }}>
+          <motion.div
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ height: "100%", background: "#22c55e", borderRadius: "0 99px 99px 0" }}
+          />
         </div>
       )}
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" custom={dir}>
+        {/* ── WELCOME ── */}
         {step === "welcome" && (
-          <motion.div
-            key="welcome"
-            className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+          <motion.div key="welcome" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 28px 40px", textAlign: "center" }}
           >
-            {/* Logo */}
-            <motion.div
-              className="w-24 h-24 rounded-3xl flex items-center justify-center mb-8"
-              style={{ background: "linear-gradient(135deg, #22c55e20, #06b6d420)" }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
-            >
-              <span className="text-5xl">💰</span>
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 280, delay: 0.1 }}
+              style={{ width: 96, height: 96, borderRadius: 32, background: "linear-gradient(135deg,#22c55e,#16a34a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 28, boxShadow: "0 8px 32px rgba(34,197,94,0.4)" }}>
+              💰
             </motion.div>
-
-            <motion.h1
-              className="text-3xl font-bold mb-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <span className="gradient-text">Expense Tracker</span>
+            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="t-h1 g-text-green" style={{ marginBottom: 12 }}>
+              Expense Tracker
             </motion.h1>
-            <motion.p
-              className="text-[var(--text-secondary)] text-base leading-relaxed mb-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              Your smart personal finance assistant. Track every rupee, manage budgets, and build better money habits.
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+              className="t-body" style={{ color: "var(--text-secondary)", marginBottom: 36, maxWidth: 300, lineHeight: 1.6 }}>
+              Your personal finance assistant. Track every rupee, set budgets, and build better money habits.
             </motion.p>
-
-            <motion.div
-              className="w-full space-y-3 mt-8 mb-10"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
               {[
-                { icon: "⚡", text: "Add expenses in under 5 seconds" },
-                { icon: "🎯", text: "Set budgets & get smart alerts" },
-                { icon: "📊", text: "Visualize spending with charts" },
-                { icon: "🤖", text: "Get personalized money insights" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 text-left">
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-sm text-[var(--text-secondary)]">{item.text}</span>
+                { icon: "⚡", text: "Add an expense in under 5 seconds" },
+                { icon: "🎯", text: "Monthly budgets with smart alerts" },
+                { icon: "📊", text: "Beautiful charts and spending insights" },
+                { icon: "📄", text: "Export PDF/Excel reports anytime" },
+              ].map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left" }}>
+                  <span style={{ fontSize: 20, width: 32, textAlign: "center" }}>{icon}</span>
+                  <span className="t-body-sm" style={{ color: "var(--text-secondary)" }}>{text}</span>
                 </div>
               ))}
             </motion.div>
-
-            <div className="w-full space-y-3">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name (optional)"
-                className="input-base"
-              />
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("currency")}
-                className="w-full h-14 rounded-2xl font-bold text-white text-lg flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-              >
-                Get Started <ChevronRight size={20} />
-              </motion.button>
-            </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+              <input type="text" value={name} onChange={e => setName(e.target.value)}
+                placeholder="Your name (optional)" className="input-base" />
+              <Btn onClick={() => go("currency")}>Get Started →</Btn>
+            </motion.div>
           </motion.div>
         )}
 
+        {/* ── CURRENCY ── */}
         {step === "currency" && (
-          <motion.div
-            key="currency"
-            className="flex-1 px-6 py-16"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+          <motion.div key="currency" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3 }}
+            style={{ flex: 1, padding: "56px 20px 32px", overflowY: "auto" }}
           >
-            <div className="mb-8">
-              <p className="text-xs font-semibold text-green-500 uppercase tracking-widest mb-2">Step 1 of 4</p>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Your Currency</h2>
-              <p className="text-[var(--text-secondary)] text-sm">Which currency do you primarily use?</p>
-            </div>
-
-            <div className="space-y-2 mb-8">
-              {CURRENCIES.map((cur) => (
-                <motion.button
-                  key={cur.code}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setCurrency(cur.code)}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
-                    currency === cur.code
-                      ? "border-green-500 bg-green-500/10"
-                      : "border-[var(--bg-border)] bg-[var(--bg-card)]"
-                  }`}
-                >
-                  <span className="text-2xl font-bold w-8 text-center" style={{ color: currency === cur.code ? "#22c55e" : "var(--text-muted)" }}>
-                    {cur.symbol}
-                  </span>
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold text-[var(--text-primary)]">{cur.code}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{cur.name}</p>
+            <p className="t-overline" style={{ color: "var(--accent)", marginBottom: 6 }}>Step 1 of 4</p>
+            <h2 className="t-h2" style={{ color: "var(--text-primary)", marginBottom: 4 }}>Your Currency</h2>
+            <p className="t-body-sm" style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
+              Which currency do you primarily use?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+              {CURRENCIES.map(cur => (
+                <button key={cur.code} onClick={() => setCurrency(cur.code)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, cursor: "pointer",
+                    background: currency === cur.code ? "var(--accent-dim)" : "var(--bg-surface)",
+                    border: `1.5px solid ${currency === cur.code ? "var(--accent)" : "var(--bg-border)"}`,
+                  }}>
+                  <span style={{ fontSize: 22, fontWeight: 800, width: 36, textAlign: "center",
+                    color: currency === cur.code ? "var(--accent)" : "var(--text-muted)" }}>{cur.symbol}</span>
+                  <div style={{ flex: 1, textAlign: "left" }}>
+                    <p className="t-label" style={{ color: "var(--text-primary)" }}>{cur.code}</p>
+                    <p className="t-caption" style={{ color: "var(--text-muted)" }}>{cur.name}</p>
                   </div>
-                  {currency === cur.code && <Check size={18} className="text-green-500" />}
-                </motion.button>
+                  {currency === cur.code && <Check size={18} color="var(--accent)" />}
+                </button>
               ))}
             </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setStep("income")}
-              className="w-full h-14 rounded-2xl font-bold text-white text-lg"
-              style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-            >
-              Continue <ChevronRight size={20} className="inline" />
-            </motion.button>
+            <Btn onClick={() => go("income")}>Continue →</Btn>
           </motion.div>
         )}
 
+        {/* ── INCOME ── */}
         {step === "income" && (
-          <motion.div
-            key="income"
-            className="flex-1 px-6 py-16"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+          <motion.div key="income" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3 }}
+            style={{ flex: 1, padding: "56px 20px 32px" }}
           >
-            <div className="mb-8">
-              <p className="text-xs font-semibold text-green-500 uppercase tracking-widest mb-2">Step 2 of 4</p>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Monthly Income</h2>
-              <p className="text-[var(--text-secondary)] text-sm">Helps us give better savings insights. You can skip this.</p>
-            </div>
-
-            <div className="card p-6 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Wallet className="text-green-500" size={22} />
-                <span className="font-semibold text-[var(--text-primary)]">Monthly Take-home</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-[var(--text-muted)]">{symbol}</span>
-                <input
-                  type="number"
-                  value={income}
-                  onChange={(e) => setIncome(e.target.value)}
-                  placeholder="0"
-                  className="input-base text-2xl font-bold font-mono"
-                  inputMode="numeric"
-                />
+            <p className="t-overline" style={{ color: "var(--accent)", marginBottom: 6 }}>Step 2 of 4</p>
+            <h2 className="t-h2" style={{ color: "var(--text-primary)", marginBottom: 4 }}>Monthly Income</h2>
+            <p className="t-body-sm" style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
+              Optional — helps calculate your savings rate. You can skip this.
+            </p>
+            <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: "var(--text-muted)" }}>{sym}</span>
+                <input type="number" value={income} onChange={e => setIncome(e.target.value)}
+                  placeholder="0" inputMode="numeric"
+                  style={{
+                    flex: 1, background: "none", border: "none", outline: "none",
+                    fontSize: 28, fontWeight: 800, color: "var(--text-primary)", fontFamily: "'JetBrains Mono', monospace",
+                  }} />
               </div>
               {income && parseFloat(income) > 0 && (
-                <p className="text-xs text-[var(--text-muted)] mt-3">
-                  Suggested savings (20%): {formatCurrency(parseFloat(income) * 0.2, currency)}/month
+                <p className="t-caption" style={{ color: "var(--text-muted)", marginTop: 12 }}>
+                  Suggested 20% savings: {formatCurrency(parseFloat(income) * 0.2, currency)}/month
                 </p>
               )}
             </div>
-
-            <div className="flex gap-3">
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("budgets")}
-                className="flex-1 h-14 rounded-2xl font-semibold border-2 border-[var(--bg-border)] text-[var(--text-secondary)]"
-              >
-                Skip
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("budgets")}
-                className="flex-[2] h-14 rounded-2xl font-bold text-white text-lg"
-                style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-              >
-                Continue →
-              </motion.button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn secondary onClick={() => go("budgets")}>Skip</Btn>
+              <div style={{ flex: 2 }}><Btn onClick={() => go("budgets")}>Continue →</Btn></div>
             </div>
           </motion.div>
         )}
 
+        {/* ── BUDGETS ── */}
         {step === "budgets" && (
-          <motion.div
-            key="budgets"
-            className="flex-1 px-6 py-16 overflow-y-auto"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+          <motion.div key="budgets" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3 }}
+            style={{ flex: 1, padding: "56px 20px 32px", overflowY: "auto" }}
           >
-            <div className="mb-6">
-              <p className="text-xs font-semibold text-green-500 uppercase tracking-widest mb-2">Step 3 of 4</p>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Monthly Budgets</h2>
-              <p className="text-[var(--text-secondary)] text-sm">Each amount = <strong>per month only</strong> — resets automatically. E.g. enter ₹3,000 for Food to allow ₹3,000/month on food.</p>
+            <p className="t-overline" style={{ color: "var(--accent)", marginBottom: 6 }}>Step 3 of 4</p>
+            <h2 className="t-h2" style={{ color: "var(--text-primary)", marginBottom: 4 }}>Monthly Budgets</h2>
+            <p className="t-body-sm" style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
+              Set <strong>per-month</strong> limits. Resets every month automatically.
+            </p>
+
+            {/* Quick presets */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {[{ l: "Tight", m: 0.5 }, { l: "Moderate", m: 0.75 }, { l: "Comfortable", m: 1 }].map(({ l, m }) => (
+                <button key={l} onClick={() => applyPreset(m)}
+                  style={{
+                    flex: 1, height: 36, borderRadius: 10, fontWeight: 700, fontSize: 12,
+                    background: "var(--bg-elevated)", border: "1.5px solid var(--bg-border)",
+                    color: "var(--text-secondary)", cursor: "pointer",
+                  }}>{l}</button>
+              ))}
             </div>
 
-            {/* Quick preset */}
-            <div className="mb-5">
-              <p className="text-xs font-semibold text-[var(--text-muted)] mb-2">Quick presets</p>
-              <div className="flex gap-2">
-                {quickBudgets.map((qb) => (
-                  <button
-                    key={qb.label}
-                    onClick={() => applyQuickBudget(qb.multiplier)}
-                    className="flex-1 py-2 rounded-xl text-sm font-semibold border-2 border-[var(--bg-border)] text-[var(--text-secondary)] hover:border-green-500/50 hover:text-green-500 transition-all"
-                  >
-                    {qb.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-8">
-              {DEFAULT_CATEGORIES.filter(c => c.id !== "others").map((cat) => (
-                <div key={cat.id} className="flex items-center gap-3 card p-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                    style={{ background: `${cat.color}20` }}
-                  >
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+              {DEFAULT_CATEGORIES.filter(c => c.id !== "others").map(cat => (
+                <div key={cat.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: `${cat.color}1a`,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
                     {cat.icon}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{cat.name}</p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-sm text-[var(--text-muted)]">{symbol}</span>
-                    <input
-                      type="number"
-                      value={budgets[cat.id] || ""}
-                      onChange={(e) => setBudgetAmounts(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                  <span className="t-label" style={{ flex: 1, color: "var(--text-primary)" }}>{cat.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    <span className="t-caption" style={{ color: "var(--text-muted)" }}>{sym}</span>
+                    <input type="number" value={budgets[cat.id] || ""} inputMode="numeric"
+                      onChange={e => setBudgets(p => ({ ...p, [cat.id]: e.target.value }))}
                       placeholder="0"
-                      className="w-20 text-right bg-[var(--bg-elevated)] border border-[var(--bg-border)] rounded-lg px-2 py-1.5 text-sm font-semibold text-[var(--text-primary)] outline-none focus:border-green-500"
-                      inputMode="numeric"
-                    />
-                    <span className="text-[10px] font-bold text-green-500">/mo</span>
+                      style={{
+                        width: 72, textAlign: "right",
+                        background: "var(--bg-elevated)", border: "1.5px solid var(--bg-border)",
+                        borderRadius: 8, padding: "6px 8px",
+                        fontSize: 14, fontWeight: 700, color: "var(--text-primary)", outline: "none",
+                      }} />
+                    <span className="t-micro" style={{ color: "var(--accent)" }}>/mo</span>
                   </div>
                 </div>
               ))}
             </div>
-
-            <div className="flex gap-3">
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("notifications")}
-                className="flex-1 h-14 rounded-2xl font-semibold border-2 border-[var(--bg-border)] text-[var(--text-secondary)]"
-              >
-                Skip
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("notifications")}
-                className="flex-[2] h-14 rounded-2xl font-bold text-white text-lg"
-                style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-              >
-                Continue →
-              </motion.button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn secondary onClick={() => go("notifications")}>Skip</Btn>
+              <div style={{ flex: 2 }}><Btn onClick={() => go("notifications")}>Continue →</Btn></div>
             </div>
           </motion.div>
         )}
 
+        {/* ── NOTIFICATIONS ── */}
         {step === "notifications" && (
-          <motion.div
-            key="notifications"
-            className="flex-1 px-6 py-16"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+          <motion.div key="notifications" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3 }}
+            style={{ flex: 1, padding: "56px 20px 32px" }}
           >
-            <div className="mb-8">
-              <p className="text-xs font-semibold text-green-500 uppercase tracking-widest mb-2">Step 4 of 4</p>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-1">Stay on Track</h2>
-              <p className="text-[var(--text-secondary)] text-sm">Enable smart alerts to never overspend.</p>
-            </div>
-
-            <div className="space-y-4 mb-10">
+            <p className="t-overline" style={{ color: "var(--accent)", marginBottom: 6 }}>Step 4 of 4</p>
+            <h2 className="t-h2" style={{ color: "var(--text-primary)", marginBottom: 4 }}>Stay on Track</h2>
+            <p className="t-body-sm" style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
+              Get notified when you're overspending.
+            </p>
+            <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 24 }}>
               {[
-                { key: "budget", label: "Budget Alerts", desc: "When you're close to or exceed a budget", icon: "⚠️", value: notifBudget, set: setNotifBudget },
-                { key: "weekly", label: "Weekly Summary", desc: "Your spending overview every Sunday", icon: "📊", value: notifWeekly, set: setNotifWeekly },
-              ].map(({ key, label, desc, icon, value, set }) => (
-                <div key={key} className="card p-4 flex items-center gap-4">
-                  <span className="text-2xl">{icon}</span>
-                  <div className="flex-1">
-                    <p className="font-semibold text-[var(--text-primary)] text-sm">{label}</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{desc}</p>
+                { label: "Budget Alerts", desc: "When you reach 80% or 100%", icon: "⚠️", val: notifBudget, set: setNotifBudget },
+                { label: "Weekly Summary", desc: "Your spending recap every Sunday", icon: "📊", val: notifWeekly, set: setNotifWeekly },
+              ].map(({ label, desc, icon, val, set }, i) => (
+                <div key={label} style={{
+                  display: "flex", alignItems: "center", gap: 14, padding: "16px",
+                  borderBottom: i === 0 ? "1px solid var(--bg-border)" : "none",
+                }}>
+                  <span style={{ fontSize: 24 }}>{icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <p className="t-label" style={{ color: "var(--text-primary)" }}>{label}</p>
+                    <p className="t-caption" style={{ color: "var(--text-muted)", marginTop: 2 }}>{desc}</p>
                   </div>
-                  <button
-                    onClick={() => set(!value)}
-                    className={`w-12 h-6 rounded-full relative transition-colors ${value ? "bg-green-500" : "bg-[var(--bg-elevated)]"}`}
-                  >
-                    <motion.div
-                      animate={{ x: value ? 24 : 2 }}
-                      className="absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow"
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
+                  <button onClick={() => set(!val)} role="switch" aria-checked={val}
+                    style={{
+                      width: 46, height: 26, borderRadius: 13, position: "relative", flexShrink: 0,
+                      background: val ? "var(--accent)" : "var(--bg-elevated)",
+                      border: `1.5px solid ${val ? "var(--accent)" : "var(--bg-border)"}`,
+                      cursor: "pointer", transition: "background 0.2s",
+                    }}>
+                    <span style={{
+                      position: "absolute", top: 3, left: val ? 21 : 3, width: 16, height: 16,
+                      borderRadius: 8, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      transition: "left 0.2s cubic-bezier(0.34,1.5,0.64,1)",
+                    }} />
                   </button>
                 </div>
               ))}
             </div>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setStep("done")}
-              className="w-full h-14 rounded-2xl font-bold text-white text-lg"
-              style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-            >
-              Continue →
-            </motion.button>
+            <Btn onClick={() => go("done")}>Continue →</Btn>
           </motion.div>
         )}
 
+        {/* ── DONE ── */}
         {step === "done" && (
-          <motion.div
-            key="done"
-            className="flex-1 flex flex-col items-center justify-center px-6 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+          <motion.div key="done" custom={dir} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ duration: 0.3 }}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", textAlign: "center" }}
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-              className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
-              style={{ background: "linear-gradient(135deg, #22c55e30, #16a34a20)" }}
-            >
-              <Sparkles size={52} className="text-green-500" />
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 280 }}
+              style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(135deg,#22c55e,#16a34a)",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 46, marginBottom: 24,
+                boxShadow: "0 8px 32px rgba(34,197,94,0.4)" }}>
+              🎉
             </motion.div>
-            <motion.h2
-              className="text-3xl font-bold mb-3"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              You&apos;re all set{name ? `, ${name}` : ""}! 🎉
-            </motion.h2>
-            <motion.p
-              className="text-[var(--text-secondary)] mb-10 text-base"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              Start tracking your expenses now. Hit the <strong className="text-green-500">+ button</strong> anytime to log a new expense — it takes just 5 seconds!
-            </motion.p>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={handleComplete}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="w-full h-14 rounded-2xl font-bold text-white text-lg"
-              style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
-            >
-              Go to Dashboard 🚀
-            </motion.button>
+            <h2 className="t-h1" style={{ color: "var(--text-primary)", marginBottom: 12 }}>
+              You&apos;re all set{name ? `, ${name}` : ""}!
+            </h2>
+            <p className="t-body" style={{ color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.6 }}>
+              Tap the <strong style={{ color: "var(--accent)" }}>green + button</strong> anywhere to log an expense in under 5 seconds.
+            </p>
+            <p className="t-caption" style={{ color: "var(--text-muted)", marginBottom: 36 }}>
+              Your data is saved locally on this device.
+            </p>
+            <Btn onClick={handleComplete}>Go to Dashboard 🚀</Btn>
           </motion.div>
         )}
       </AnimatePresence>

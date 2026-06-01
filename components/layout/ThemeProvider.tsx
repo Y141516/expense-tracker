@@ -15,6 +15,17 @@ const ThemeContext = createContext<ThemeContextType>({
   setTheme: () => {},
 });
 
+// Inline script injected before React hydration to prevent flash
+const THEME_SCRIPT = `
+(function() {
+  try {
+    var t = localStorage.getItem('et_theme') || 'system';
+    var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);
+  } catch(e) {}
+})();
+`;
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
@@ -31,6 +42,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
       document.documentElement.classList.toggle("dark", isDark);
       setResolvedTheme(isDark ? "dark" : "light");
+
+      // Update meta theme-color dynamically
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", isDark ? "#060c17" : "#f0f4f8");
     };
 
     applyTheme(theme);
@@ -50,6 +65,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+      {/* Anti-flash script - runs synchronously before paint */}
+      <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       {children}
     </ThemeContext.Provider>
   );

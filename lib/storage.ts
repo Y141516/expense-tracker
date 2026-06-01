@@ -285,3 +285,20 @@ export function generateInsights(month: string) {
 export function clearAllData(): void {
   Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
 }
+
+// ── Budget copy helpers ────────────────────────────────────────
+export function hasBudgetsForMonth(month: string): boolean {
+  return getBudgets().some((b) => b.month === month);
+}
+
+export function copyBudgetsToMonth(fromMonth: string, toMonth: string): void {
+  const source = getBudgets().filter((b) => b.month === fromMonth);
+  source.forEach((b) => setBudget(b.category_id, b.amount, toMonth));
+}
+
+export function getPreviousMonthKey(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  const date = new Date(year, m - 2, 1); // m-2 because months are 0-indexed
+  return format(date, "yyyy-MM");
+}
+

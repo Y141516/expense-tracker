@@ -64,7 +64,7 @@ export function WelcomeGuide({ onDone }: WelcomeGuideProps) {
   return (
     <div
       className="min-h-dvh flex flex-col"
-      style={{ background: "var(--bg-primary)" }}
+      style={{ background: "var(--bg-base)" }}
     >
       {/* Skip */}
       <div className="flex justify-end px-5 pt-5 pb-2">

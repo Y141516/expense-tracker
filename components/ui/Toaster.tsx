@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, AlertCircle, Info, X, AlertTriangle } from "lucide-react";
+import { X } from "lucide-react";
 
 type ToastType = "success" | "error" | "info" | "warning";
 
@@ -22,6 +22,13 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
+const CONFIG: Record<ToastType, { icon: string; accent: string; bg: string; border: string }> = {
+  success: { icon: "✅", accent: "#22c55e", bg: "rgba(34,197,94,0.10)",  border: "rgba(34,197,94,0.25)" },
+  error:   { icon: "❌", accent: "#ef4444", bg: "rgba(239,68,68,0.10)",  border: "rgba(239,68,68,0.25)" },
+  info:    { icon: "ℹ️",  accent: "#3b82f6", bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.25)" },
+  warning: { icon: "⚠️", accent: "#f59e0b", bg: "rgba(245,158,11,0.10)", border: "rgba(245,158,11,0.25)" },
+};
+
 export function Toaster() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -30,46 +37,84 @@ export function Toaster() {
   }, []);
 
   const toast = useCallback((opts: Omit<Toast, "id">) => {
-    const id = Date.now().toString();
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev.slice(-3), { ...opts, id }]);
-    setTimeout(() => dismiss(id), 3500);
+    setTimeout(() => dismiss(id), 3800);
   }, [dismiss]);
 
   const success = useCallback((title: string, message?: string) => toast({ type: "success", title, message }), [toast]);
-  const error = useCallback((title: string, message?: string) => toast({ type: "error", title, message }), [toast]);
-  const info = useCallback((title: string, message?: string) => toast({ type: "info", title, message }), [toast]);
+  const error   = useCallback((title: string, message?: string) => toast({ type: "error", title, message }), [toast]);
+  const info    = useCallback((title: string, message?: string) => toast({ type: "info", title, message }), [toast]);
   const warning = useCallback((title: string, message?: string) => toast({ type: "warning", title, message }), [toast]);
-
-  const icons = { success: CheckCircle, error: AlertCircle, info: Info, warning: AlertTriangle };
-  const colors = {
-    success: "border-green-500/30 bg-green-500/10 text-green-400",
-    error: "border-red-500/30 bg-red-500/10 text-red-400",
-    info: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-    warning: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  };
 
   return (
     <ToastContext.Provider value={{ toast, success, error, info, warning }}>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[calc(100vw-2rem)] max-w-sm space-y-2 pointer-events-none">
+      {/* Toast container — above everything */}
+      <div style={{
+        position: "fixed",
+        top: 16,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 9999,
+        width: "calc(100vw - 32px)",
+        maxWidth: 400,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        pointerEvents: "none",
+      }}>
         <AnimatePresence mode="popLayout">
           {toasts.map((t) => {
-            const Icon = icons[t.type];
+            const cfg = CONFIG[t.type];
             return (
               <motion.div
                 key={t.id}
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                layout
+                initial={{ opacity: 0, y: -16, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.25 }}
-                className={`flex items-start gap-3 p-3 rounded-xl border card pointer-events-auto ${colors[t.type]}`}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  background: "var(--bg-surface)",
+                  border: `1.5px solid ${cfg.border}`,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                  pointerEvents: "auto",
+                  backdropFilter: "blur(8px)",
+                }}
               >
-                <Icon size={18} className="shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{t.title}</p>
-                  {t.message && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{t.message}</p>}
+                {/* Accent bar */}
+                <div style={{
+                  position: "absolute", left: 0, top: 10, bottom: 10,
+                  width: 3, borderRadius: "0 3px 3px 0",
+                  background: cfg.accent,
+                }} />
+
+                <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>{cfg.icon}</span>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>
+                    {t.title}
+                  </p>
+                  {t.message && (
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, lineHeight: 1.4 }}>
+                      {t.message}
+                    </p>
+                  )}
                 </div>
-                <button onClick={() => dismiss(t.id)} className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
-                  <X size={14} />
+
+                <button
+                  onClick={() => dismiss(t.id)}
+                  style={{
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                    background: "var(--bg-elevated)", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  <X size={12} />
                 </button>
               </motion.div>
             );
@@ -83,13 +128,8 @@ export function Toaster() {
 export function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) {
-    // Return no-op functions when context is not available
     return {
-      toast: () => {},
-      success: () => {},
-      error: () => {},
-      info: () => {},
-      warning: () => {},
+      toast: () => {}, success: () => {}, error: () => {}, info: () => {}, warning: () => {},
     } as ToastContextType;
   }
   return ctx;

@@ -60,8 +60,8 @@ export function getBudgetStatus(spent: number, budget: number): {
 } {
   const percentage = budget > 0 ? (spent / budget) * 100 : 0;
   if (percentage >= 100) return { percentage, status: "exceeded", color: "#ef4444" };
-  if (percentage >= 80) return { percentage, status: "warning", color: "#f59e0b" };
-  if (percentage >= 60) return { percentage, status: "danger", color: "#f97316" };
+  if (percentage >= 90)  return { percentage, status: "danger",   color: "#ef4444" };
+  if (percentage >= 70)  return { percentage, status: "warning",  color: "#f97316" };
   return { percentage, status: "safe", color: "#22c55e" };
 }
 

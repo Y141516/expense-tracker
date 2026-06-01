@@ -111,7 +111,8 @@ body {
 
 /* Page content — accounts for fixed nav */
 .page-content {
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+  /* nav(64) + FAB height(56) + FAB gap(14) + breathing room(16) + safe-area */
+  padding-bottom: calc(var(--nav-height) + 56px + 30px + env(safe-area-inset-bottom, 0px));
   min-height: 100dvh;
 }
 
@@ -129,6 +130,18 @@ body {
 .page-pad { padding: 0 16px; }
 
 /* ══════════════════════════════════════════════════════════
+   TOKEN ALIASES — backward compat for older component code
+══════════════════════════════════════════════════════════ */
+:root {
+  --bg-primary: var(--bg-base);
+  --bg-card:    var(--bg-surface);
+}
+.dark {
+  --bg-primary: var(--bg-base);
+  --bg-card:    var(--bg-surface);
+}
+
+/* ══════════════════════════════════════════════════════════
    CARD
 ══════════════════════════════════════════════════════════ */
 .card {
@@ -136,6 +149,15 @@ body {
   border: 1.5px solid var(--bg-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
+}
+
+/* Light mode cards need more visible shadows since no dark bg contrast */
+:root .card {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 0 1.5px var(--bg-border);
+}
+
+.dark .card {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 4px 16px rgba(0,0,0,0.4);
 }
 
 .card-elevated {
@@ -313,7 +335,7 @@ body {
 ══════════════════════════════════════════════════════════ */
 .fab {
   position: fixed;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 14px);
   right: 20px;
   z-index: 50;
   width: 56px;
@@ -329,7 +351,7 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .fab:hover  { box-shadow: 0 6px 28px rgba(34,197,94,0.55); }
-.fab:active { transform: scale(0.9); }
+.fab:active { transform: scale(0.92); }
 
 /* ══════════════════════════════════════════════════════════
    GLASSMORPHISM

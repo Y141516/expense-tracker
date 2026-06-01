@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/store/app-context";
 import {
   getProfile, getCategoryTotals, getMonthlyTrends,
-  getDailyTotals, getExpensesByMonth,
+  getExpensesByMonth,
 } from "@/lib/storage";
 import { formatCurrency, getCurrentMonth, getMonthLabel, getPreviousMonth } from "@/lib/utils";
 import { DEFAULT_CATEGORIES } from "@/types";
